@@ -22,9 +22,10 @@ CONTROL_TOPIC = f"{PROJECT_ID}/relay/control"
 
 # Mock Database: Tracking appliances across the department
 db_appliances = {
-    "lab1_light1": {"name": "Lab 1 Main Light", "location": "Lab 1", "status": "OFF"},
-    "lab1_light2": {"name": "Lab 1 Projector Light", "location": "Lab 1", "status": "OFF"},
-    "classA_fan1": {"name": "Classroom A Fan 1", "location": "Classroom A", "status": "OFF"},
+    "relay_1": {"pin": "4", "name": "Lab 1 Main Light", "location": "Lab 1", "status": "OFF"},
+    "relay_2": {"pin": "5", "name": "Lab 1 Side Light", "location": "Lab 1", "status": "OFF"},
+    "relay_3": {"pin": "18", "name": "Lab 1 Projector", "location": "Lab 1", "status": "OFF"},
+    "relay_4": {"pin": "19", "name": "Lab 1 Fan", "location": "Lab 1", "status": "OFF"},
 }
 
 # Setup MQTT Client for Python Backend
@@ -71,10 +72,11 @@ def control_appliance(request: ControlRequest):
     
     # 1. Update the local state database record
     db_appliances[request.appliance_id]["status"] = request.state
+    appliance = db_appliances[request.appliance_id]
     
     # 2. Fire the MQTT command over the internet to HiveMQ
     # For this basic test, any command updates our single prototype relay
-    mqtt_client.publish(CONTROL_TOPIC, request.state)
+    mqtt_client.publish(CONTROL_TOPIC, f"{appliance['pin']}:{request.state}")
     
     return {
         "success": True,
