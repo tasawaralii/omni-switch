@@ -1,6 +1,9 @@
 #include <WiFi.h>
 #include <PubSubClient.h>
 
+#define PROJECT_ID "omni-switch-2677"
+#define NODE_ID "node2"
+
 // Network Credentials
 const char* ssid     = "babyxboss Mobile";
 const char* password = "11111111";
@@ -9,11 +12,14 @@ const char* password = "11111111";
 const char* mqtt_server = "broker.hivemq.com";
 const int mqtt_port = 1883;
 
-#define PROJECT_ID "omni-switch-2677" 
-
 // MQTT Topics
-const char* topic_sub = PROJECT_ID "/relay/control";
-const char* topic_pub = PROJECT_ID "/relay/status";
+
+const String topic_sub_str = String(PROJECT_ID) + "/" + String(NODE_ID) + "/relay/control";
+const String topic_pub_str = String(PROJECT_ID) + "/" + String(NODE_ID) + "/relay/status";
+
+// Convert to const char* where PubSubClient requires it
+const char* topic_sub = topic_sub_str.c_str();
+const char* topic_pub = topic_pub_str.c_str();
 
 // --- MULTI-PIN CONFIGURATION ---
 // Add any safe GPIO pins you want to control here
