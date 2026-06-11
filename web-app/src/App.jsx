@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import Dashboard from "./pages/Dashboard"; // Ensure casing matches your file structure
 import Config from "./pages/Config";       // Ensure casing matches your file structure
 
-const API_BASE_URL = "http://127.0.0.1:8000";
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 function App() {
   // Navigation State: 'dashboard' | 'config'
