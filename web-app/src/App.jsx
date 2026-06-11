@@ -1,165 +1,91 @@
 import React, { useState, useEffect } from "react";
+import Dashboard from "./pages/Dashboard"; // Ensure casing matches your file structure
+import Config from "./pages/Config";       // Ensure casing matches your file structure
 
 const API_BASE_URL = "http://127.0.0.1:8000";
 
 function App() {
-  const [appliances, setAppliances] = useState({});
+  // Navigation State: 'dashboard' | 'config'
+  const [activeTab, setActiveTab] = useState("dashboard");
+
+  // Global State
+  const [nodes, setNodes] = useState({});
   const [totalOn, setTotalOn] = useState(0);
   const [totalNodes, setTotalNodes] = useState(0);
-  const [activeNode, setActiveNode] = useState("node1"); // Default selected node
   const [loading, setLoading] = useState(true);
 
+  // Polling mechanism to sync with FastAPI layer
   const fetchState = async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/appliances`);
       const data = await response.json();
-      setAppliances(data.appliances);
-      setTotalOn(data.total_on_appliances);
-      setTotalNodes(data.total_nodes);
+      setNodes(data.nodes || {});
+      setTotalOn(data.total_on_appliances || 0);
+      setTotalNodes(data.total_nodes || 0);
       setLoading(false);
     } catch (error) {
-      console.error("Error connecting to backend gateway:", error);
+      console.error("Failed syncing infrastructure topology:", error);
     }
   };
 
   useEffect(() => {
     fetchState();
-    const interval = setInterval(fetchState, 3000);
-    return () => clearInterval(interval);
   }, []);
-
-  const toggleAppliance = async (relayKey, currentStatus) => {
-    const nextState = currentStatus === "ON" ? "OFF" : "ON";
-
-    // Optimistic UI Update for nested node object structure
-    setAppliances((prev) => ({
-      ...prev,
-      [activeNode]: {
-        ...prev[activeNode],
-        [relayKey]: {
-          ...prev[activeNode][relayKey],
-          status: nextState,
-        },
-      },
-    }));
-
-    if (nextState === "ON") setTotalOn((c) => c + 1);
-    else setTotalOn((c) => c - 1);
-
-    try {
-      // Hits the dynamic path matching your /appliances/control/{node_id} endpoint
-      await fetch(`${API_BASE_URL}/appliances/control/${activeNode}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          appliance_id: relayKey, // Sending the key (relay_1, relay_2, etc.)
-          state: nextState 
-        }),
-      });
-    } catch (error) {
-      console.error("Failed to transmit hardware state change:", error);
-      fetchState(); // Rollback to server state if connection drops
-    }
-  };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-screen bg-slate-50">
+      <div className="w-full max-w-md mx-auto flex justify-center items-center h-screen bg-slate-950 text-slate-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <h3 className="text-slate-600 font-medium">Loading LogicNode Matrix...</h3>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-sm font-semibold tracking-wider text-slate-400">SYNCING SYSTEM SCHEMATICS...</p>
         </div>
       </div>
     );
   }
 
-  // Safely extract the relays for the currently selected node tab
-  const currentNodeRelays = appliances[activeNode] || {};
-
   return (
-    <div className="max-w-md mx-auto px-4 py-6 bg-slate-50 min-h-screen font-sans antialiased">
+    // FIX 1: Added 'w-full' here to force the container to expand consistently across all views
+    <div className="w-full max-w-md mx-auto bg-slate-950 min-h-screen text-slate-100 font-sans pb-24 relative flex flex-col shadow-2xl">
       
-      {/* Header Stat Board */}
-      <header className="bg-slate-900 text-white p-6 rounded-2xl mb-6 shadow-xl shadow-slate-900/10 transition-all">
-        <div className="flex justify-between items-center opacity-75">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-indigo-400">LogicNode Infrastructure</h3>
-          <span className="text-xs bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700">{totalNodes} Active Nodes</span>
+      {/* Universal Mobile Top Header bar status widget */}
+      <header className="p-6 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-800 flex justify-between items-center">
+        <div>
+          <h1 className="text-xl font-black tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">LogicNode</h1>
         </div>
-        <h1 className="text-3xl font-extrabold mt-3 tracking-tight">{totalOn} Active</h1>
-        <p className="text-sm opacity-80 mt-1">Appliances currently running in department</p>
       </header>
 
-      {/* Node Switcher Tabs */}
-      <div className="mb-6">
-        <label className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">Select Hub Node</label>
-        <div className="flex bg-slate-200/80 p-1 rounded-xl gap-1">
-          {Object.keys(appliances).map((nodeId) => (
-            <button
-              key={nodeId}
-              onClick={() => setActiveNode(nodeId)}
-              className={`flex-1 py-2.5 text-sm font-semibold rounded-lg capitalize transition-all duration-150 ${
-                activeNode === nodeId
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              {nodeId}
-            </button>
-          ))}
-        </div>
+      {/* Main Core View Router Content Blocks */}
+      <div className="flex-1 px-4 py-6">
+        {activeTab === "dashboard" ? (
+          <Dashboard nodes={nodes} setTotalOn={setTotalOn} setNodes={setNodes} globalFetch={fetchState}/>
+        ) : (
+          <Config globalFetch={fetchState} />
+        )}
       </div>
+    
+      {/* FIX 2: Added 'w-full' here to ensure the fixed footer respects the max-w-md constraint perfectly */}
+      <footer className="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-slate-900/90 backdrop-blur-md border-t border-slate-800 z-40 px-6 py-2.5 flex justify-around shadow-2xl">
+        <button
+          onClick={() => { setActiveTab("dashboard");}}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "dashboard" ? "text-indigo-400" : "text-slate-500 hover:text-slate-300"}`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2H6a2 2 0 01-2-2V16zM14 16a2 2 0 012-2h2a2 2 0 012 2v4a2 2 0 01-2 2h-2a2 2 0 01-2-2V16z" />
+          </svg>
+          <span className="text-[10px] font-bold tracking-wider uppercase">Dashboard</span>
+        </button>
 
-      {/* Appliances List for Selected Node */}
-      <main>
-        <div className="flex justify-between items-center mb-3">
-          <h2 className="text-md font-bold text-slate-800 uppercase tracking-wide">Device Controls</h2>
-          <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full capitalize">
-            Viewing {activeNode}
-          </span>
-        </div>
-        
-        <div className="space-y-3">
-          {Object.entries(currentNodeRelays).length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-6">No appliances registered to this node.</p>
-          ) : (
-            Object.entries(currentNodeRelays).map(([relayKey, relayData]) => {
-              const isOn = relayData.status === "ON";
-              return (
-                <div 
-                  key={relayKey} 
-                  className={`bg-white p-4 rounded-xl flex justify-between items-center shadow-sm border transition-all duration-200 ${
-                    isOn ? "border-emerald-500 ring-1 ring-emerald-500/20" : "border-slate-200/60"
-                  }`}
-                >
-                  <div>
-                    <h4 className="font-semibold text-slate-900 text-base leading-tight">{relayData.name}</h4>
-                    <div className="flex gap-2 items-center mt-1.5">
-                      <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
-                        {relayData.location}
-                      </span>
-                      <span className="text-[10px] font-mono text-slate-400">
-                        Pin {relayData.pin}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Switch Action Trigger */}
-                  <button 
-                    onClick={() => toggleAppliance(relayKey, relayData.status)}
-                    className={`px-4 py-2 text-xs font-bold tracking-wider rounded-full transition-all duration-150 border uppercase ${
-                      isOn 
-                        ? "bg-emerald-500 text-white border-emerald-600 shadow-md shadow-emerald-500/10 active:scale-95" 
-                        : "bg-white text-slate-600 border-slate-300 hover:border-slate-400 active:bg-slate-50"
-                    }`}
-                  >
-                    {isOn ? "Running" : "Off"}
-                  </button>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </main>
+        <button
+          onClick={() => { setActiveTab("config");}}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === "config" ? "text-indigo-400" : "text-slate-500 hover:text-slate-300"}`}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="text-[10px] font-bold tracking-wider uppercase">Provision</span>
+        </button>
+      </footer>
     </div>
   );
 }

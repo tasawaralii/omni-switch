@@ -44,3 +44,8 @@ class GetAppliancesResponse(BaseModel):
         ..., 
         description="Dictionary mapping node IDs to node details"
     )
+    
+    
+class UpdateSuccessResponse(BaseModel):
+    success: bool
+    message: str

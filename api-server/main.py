@@ -12,6 +12,7 @@ from schemas import (
     ProvisionNodeResponse,
     GetAppliancesResponse,
     ControlApplianceResponse,
+    UpdateSuccessResponse
 )
 from sqlalchemy.orm import Session
 
@@ -51,6 +52,29 @@ def shutdown_event():
     mqtt_client.loop_stop()
     mqtt_client.disconnect()
 
+@app.put("/nodes/update_name/{node_id}", response_model=UpdateSuccessResponse)
+def update_node_name(node_id: str, name: str, db: Session = Depends(get_db)):
+    node = db.query(models.Node).filter(models.Node.id == node_id).first()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    node.name = name
+    db.commit()
+    return {"success": True, "message": f"Node name updated to {name}"}
+
+@app.put("/appliances/update/{node_id}/{relay_key}", response_model=UpdateSuccessResponse)
+def update_appliance_details(node_id: str, relay_key: str, name: str, is_active: bool, db: Session = Depends(get_db)):
+    appliance = (
+        db.query(models.Appliance)
+        .filter(models.Appliance.node_id == node_id)
+        .filter(models.Appliance.relay_key == relay_key)
+        .first()
+    )
+    if not appliance:
+        raise HTTPException(status_code=404, detail="Appliance not found")
+    appliance.name = name
+    appliance.is_active = is_active
+    db.commit()
+    return {"success": True, "message": f"Appliance {relay_key} updated successfully."}
 
 @app.post("/nodes/provision", response_model=ProvisionNodeResponse)
 def provision_new_node(request: NodeCreateRequest, db: Session = Depends(get_db)):
@@ -133,10 +157,9 @@ def get_appliances(db: Session = Depends(get_db)):
         "nodes": formatted_nodes,
     }
 
-
 @app.post("/appliances/control/{node_id}/{relay_key}", response_model=ControlApplianceResponse)
 def control_appliance(
-    node_id: str,relay_key: str, request: ControlRequest, db: Session = Depends(get_db)
+    node_id: str, relay_key: str, request: ControlRequest, db: Session = Depends(get_db)
 ):
     """
     Updates the appliance state in the database and dispatches
@@ -155,16 +178,17 @@ def control_appliance(
     if request.state not in ["ON", "OFF"]:
         raise HTTPException(status_code=400, detail="State must be 'ON' or 'OFF'")
 
+    # 1. Update the Python object
     appliance.status = request.state
 
-    # 2. Fire the MQTT command over the internet to HiveMQ
+    # 2. Commit the transaction to Postgres FIRST
+    db.commit()
+    db.refresh(appliance) # Safe to call now, though technically optional after a simple commit
 
+    # 3. Fire the MQTT command SECOND (only runs if the database save was successful)
     mqtt_client.publish(
         f"{PROJECT_ID}/{node_id}/relay/control", f"{appliance.pin}:{request.state}"
     )
-
-    db.refresh(appliance)
-    db.commit()
 
     return {
         "success": True,
