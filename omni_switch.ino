@@ -2,11 +2,11 @@
 #include <PubSubClient.h>
 
 #define PROJECT_ID "omni-switch-2677"
-#define NODE_ID "node2"
+#define NODE_ID "node1"
 
 // Network Credentials
-const char* ssid     = "babyxboss Mobile";
-const char* password = "11111111";
+const char* ssid     = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
 
 // MQTT Broker Setup
 const char* mqtt_server = "broker.hivemq.com";

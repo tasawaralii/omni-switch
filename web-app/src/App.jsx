@@ -50,7 +50,7 @@ function App() {
       {/* Universal Mobile Top Header bar status widget */}
       <header className="p-6 bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-800 flex justify-between items-center">
         <div>
-          <h1 className="text-xl font-black tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">LogicNode</h1>
+          <h1 className="text-xl font-black tracking-tight bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">OmniSwitch</h1>
         </div>
       </header>
 

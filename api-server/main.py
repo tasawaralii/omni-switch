@@ -16,7 +16,7 @@ from schemas import (
 )
 from sqlalchemy.orm import Session
 
-app = FastAPI(title="LogicNode Departmental Gateway")
+app = FastAPI(title="OmniSwitch Departmental Gateway")
 
 models.Base.metadata.create_all(bind=engine)
 
